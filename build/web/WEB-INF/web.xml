@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app version="3.1" xmlns="http://xmlns.jcp.org/xml/ns/javaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd">
+    <servlet>
+        <servlet-name>TestConnectionServlet</servlet-name>
+        <servlet-class>Servlets.TestConnectionServlet</servlet-class>
+    </servlet>
+    <servlet>
+        <servlet-name>GetPictureServlet</servlet-name>
+        <servlet-class>Servlets.GetPictureServlet</servlet-class>
+        <init-param>
+            <param-name>E</param-name>
+            <param-value/>
+        </init-param>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>TestConnectionServlet</servlet-name>
+        <url-pattern>/TestConnectionServlet</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>GetPictureServlet</servlet-name>
+        <url-pattern>/GetPictureServlet</url-pattern>
+    </servlet-mapping>
+    <session-config>
+        <session-timeout>
+            30
+        </session-timeout>
+    </session-config>
+</web-app>
