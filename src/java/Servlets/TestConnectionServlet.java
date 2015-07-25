@@ -93,6 +93,7 @@ public class TestConnectionServlet extends HttpServlet {
                         .build();
             }
             
+            response.setContentType("application/json;charset=UTF-8");
             response.getWriter().print(jsonObject);
             
         } catch (ClassNotFoundException ex){

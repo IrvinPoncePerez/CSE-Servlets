@@ -5,16 +5,20 @@
  */
 package Servlets;
 
-import com.sun.xml.rpc.processor.modeler.j2ee.xml.javaIdentifierType;
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.servlet.ServletException;
@@ -74,10 +78,11 @@ public class GetPictureServlet extends HttpServlet {
                 .add("employee_number", request.getParameter("E"))
                 .add("employee_name", getEmployeeData(Integer.parseInt(request.getParameter("E")), "EMPLOYEE_NAME"))
                 .add("department", getEmployeeData(Integer.parseInt(request.getParameter("E")), "DEPARTMENT"))
-                //.add("job", getEmployeeData(Integer.parseInt(request.getParameter("E")), "JOB"))
-                .add("picture", " ")
+                .add("job", getEmployeeData(Integer.parseInt(request.getParameter("E")), "JOB"))
+                .add("picture", getEmployeePicture(Integer.parseInt(request.getParameter("E"))))
                 .build();
         
+        response.setContentType("application/json;charset=UTF-8");
         response.getWriter().print(jsonObject);
     }
 
@@ -136,15 +141,87 @@ public class GetPictureServlet extends HttpServlet {
             statement.execute();
             
             result = statement.getString(1);
-                       
+            
+            connection.close();
         } catch (ClassNotFoundException ex){
             System.out.println("ClassNotFoundException=" + ex.getMessage());
         } catch (SQLException ex){
             System.out.println("SQLException=" + ex.getMessage());
-        }
+        } 
         
         return result;
         
+    }
+    
+    private String getEmployeePicture(Integer employeeNumber){
+        
+        Connection connection = null;
+        CallableStatement statement = null;
+        ResultSet resultSet = null;
+        
+        BLOB blob = null;
+        
+        String result = " ";
+        String sql = "{ ? = call PAC_HR_APPLICATION_ANDROID_PKG.GET_PICTURE(?) }";;
+        String url = "jdbc:oracle:thin:@192.1.1.193:1601:DEV";
+        
+        try {
+            Class.forName("oracle.jdbc.driver.OracleDriver");
+            connection = DriverManager.getConnection(url, "apps", "apps");
+            
+            statement = connection.prepareCall(sql);
+            statement.setInt(2, employeeNumber);
+            statement.registerOutParameter(1, java.sql.Types.BLOB);
+            statement.execute();
+            
+            blob = (BLOB) statement.getBlob(1);
+            result = readBlob(blob);
+            
+            connection.close();
+            
+        } catch (ClassNotFoundException ex){
+            System.out.println("ClassNotFoundException=" + ex.getMessage());
+        } catch (SQLException ex){
+            System.out.println("SQLException=" + ex.getMessage());
+        } 
+        
+        return result;
+    }
+    
+    private String readBlob(BLOB blob){
+       
+        String stringBlob = "";
+        byte[] buffer = new byte[8192];
+        byte[] bytes = null;
+        int bytesRead;
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        String line;
+        //File image = new File("C:\\Users\\IRVIN\\Google Drive\\El Calvario\\20150722 - Java Servlets\\java.jpg");
+        
+        try {
+            //FileOutputStream fos = new FileOutputStream(image);
+            //byte[] buffer = new byte[1];
+            //InputStream is = blob.getBinaryStream();
+            //while (is.read(buffer) > 0){
+              //  fos.write(buffer);
+            //}
+            //fos.close();
+            
+            InputStream is = blob.getBinaryStream();
+            while ((bytesRead = is.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, bytesRead);
+            }
+            
+            bytes = outputStream.toByteArray();
+            stringBlob = new sun.misc.BASE64Encoder().encode(bytes);
+            
+        } catch (SQLException ex) {
+            return ex.getMessage();
+        } catch (IOException ex) {
+            return ex.getMessage();
+        }        
+         
+        return stringBlob;
     }
 
 }
