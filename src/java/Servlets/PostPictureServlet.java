@@ -113,6 +113,7 @@ public class PostPictureServlet extends HttpServlet {
     }
     
     public SerialBlob decodeToImage(String stringImage){
+        SerialBlob blob = null;
         try {
             BASE64Decoder decoder = new BASE64Decoder();
             byte[] imageByte = decoder.decodeBuffer(stringImage);
@@ -137,4 +138,3 @@ public class PostPictureServlet extends HttpServlet {
     }// </editor-fold>
 
 }
-
