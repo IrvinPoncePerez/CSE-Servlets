@@ -162,13 +162,13 @@ public class GetPictureServlet extends HttpServlet {
         BLOB blob = null;
         
         String result = " ";
-        String sql = "{ ? = call PAC_HR_APPLICATION_ANDROID_PKG.GET_PICTURE(?) }";;
+        String sql = "{ ? = call PAC_HR_APPLICATION_ANDROID_PKG.GET_PICTURE(?) }";
         String url = "jdbc:oracle:thin:@192.1.1.193:1601:DEV";
         
         try {
             Class.forName("oracle.jdbc.driver.OracleDriver");
             connection = DriverManager.getConnection(url, "apps", "apps");
-            
+                        
             statement = connection.prepareCall(sql);
             statement.setInt(2, employeeNumber);
             statement.registerOutParameter(1, java.sql.Types.BLOB);

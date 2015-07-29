@@ -7,9 +7,14 @@ package Servlets;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringReader;
-import java.sql.Blob;
+import oracle.sql.BLOB;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -22,6 +27,10 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.sql.rowset.serial.SerialBlob;
+import oracle.jdbc.OracleConnection;
+import oracle.sql.ARRAY;
+import oracle.sql.ArrayDescriptor;
+import oracle.sql.CLOB;
 import sun.misc.BASE64Decoder;
 
 /**
@@ -86,7 +95,9 @@ public class PostPictureServlet extends HttpServlet {
         
         StringBuilder builder = new StringBuilder();
         BufferedReader reader = request.getReader();
-        Blob blob;
+        //BLOB blob;
+        //byte[] byteArray = null;
+        CLOB clob;
         String employeeNumber;
         
         try{
@@ -100,9 +111,14 @@ public class PostPictureServlet extends HttpServlet {
             jsonReader.close();
             
             employeeNumber = jsonObject.getString("employee_number");
-            blob = decodeToImage(jsonObject.getString("picture"));
+            //byteArray = decodeImageString(jsonObject.getString("picture"));
+            clob = createClob(jsonObject.getString("picture"));
             
-            response.setStatus(HttpServletResponse.SC_OK);
+            if (setEmployeePicture(employeeNumber, clob)){            
+                response.setStatus(HttpServletResponse.SC_OK);
+            } else {
+                response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            }
         } catch (IOException ex){
             System.out.println(ex.getMessage());
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -112,19 +128,126 @@ public class PostPictureServlet extends HttpServlet {
         
     }
     
-    public SerialBlob decodeToImage(String stringImage){
-        SerialBlob blob = null;
+    public BLOB decodeToImage(String stringImage){
+        BLOB blob = null;
+        String url = "jdbc:oracle:thin:@192.1.1.193:1601:DEV";
+        OracleConnection oracleConnection;
+        Connection connection;
+        
         try {
+            Class.forName("oracle.jdbc.driver.OracleDriver");
+            connection = DriverManager.getConnection(url, "apps", "apps");            
+            
             BASE64Decoder decoder = new BASE64Decoder();
-            byte[] imageByte = decoder.decodeBuffer(stringImage);
-            blob = new SerialBlob(imageByte);
+            byte[] decodeBytes = decoder.decodeBuffer(stringImage);
+            
+            oracleConnection = (OracleConnection) connection;
+            
+            
+            blob = BLOB.createTemporary(oracleConnection, 
+                                        true, 
+                                        oracle.sql.BLOB.DURATION_SESSION);
+            
+            OutputStream outputStream = blob.setBinaryStream(0);
+            outputStream.write(decodeBytes);
+            outputStream.flush();
+            outputStream.close();
+            
         } catch (IOException ex) {
             System.out.println(ex.getMessage());
         } catch (SQLException ex) {
             System.out.println(ex.getMessage());
-        }
+        } catch (ClassNotFoundException ex) {
+            System.out.println(ex.getMessage());
+        } 
         
         return blob;
+    }
+    
+    public byte[] decodeImageString(String stringImage){
+        BASE64Decoder decoder = new BASE64Decoder();
+        byte[] decodeBytes = null;
+        try {
+            decodeBytes = decoder.decodeBuffer(stringImage);
+        } catch (IOException ex) {
+            System.out.println(ex.getMessage());
+        }
+        
+        return decodeBytes;
+    }
+    
+    public CLOB createClob(String data){
+        CLOB clob = null;
+        BASE64Decoder decoder = new BASE64Decoder();
+        String url = "jdbc:oracle:thin:@192.1.1.193:1601:DEV";
+        OracleConnection oracleConnection;
+        Connection connection;
+        byte[] decodeBytes = null;
+        
+        try {
+            Class.forName("oracle.jdbc.driver.OracleDriver");
+            connection = DriverManager.getConnection(url, "apps", "apps");
+            oracleConnection = (OracleConnection) connection;
+            
+            decodeBytes = decoder.decodeBuffer(data);
+            clob = CLOB.createTemporary(oracleConnection, false, oracle.sql.CLOB.DURATION_SESSION);
+            clob.open(CLOB.MODE_READWRITE);
+            
+            OutputStream stream = (OutputStream) clob.setAsciiStream(0L);
+            stream.write(decodeBytes);
+            stream.flush();
+            stream.close();
+            clob.close();
+        } catch (IOException ex) {
+            System.out.println(ex.getMessage());
+        } catch (SQLException ex) {
+            System.out.println(ex.getMessage());
+        } catch (ClassNotFoundException ex) {
+            System.out.println(ex.getMessage());
+        }       
+        
+        return clob;
+    }
+    
+    private Boolean setEmployeePicture(String employeeNumber, CLOB picture){
+    
+        Connection connection = null;
+        CallableStatement statement = null;
+        Boolean result = false;
+        String stringResult = "";
+        
+        String sql = "{ ? = call PAC_HR_APPLICATION_ANDROID_PKG.SET_PICTURE(?, ?) }";
+        String url = "jdbc:oracle:thin:@192.1.1.193:1601:DEV";
+        
+        try{
+            Class.forName("oracle.jdbc.driver.OracleDriver");
+            connection = DriverManager.getConnection(url, "apps", "apps");
+            
+            statement = connection.prepareCall(sql);
+            statement.setString(2, employeeNumber);
+            statement.setClob(3, picture);
+            
+            statement.registerOutParameter(1, java.sql.Types.VARCHAR);
+            statement.execute();
+            
+            stringResult = statement.getString(1);
+            
+            if (stringResult.equals("true") || stringResult.equals("false")){
+                result = Boolean.parseBoolean(stringResult);
+            } else {
+                System.out.println("DBException=" + stringResult);
+            }
+            
+            connection.close();
+        } catch (ClassNotFoundException ex) {
+            System.out.println("ClassNotFoundException=" + ex.getMessage());
+            result = false;
+        } catch (SQLException ex) {
+            System.out.println("SQLException=" + ex.getMessage());
+            result = false;
+        }
+        
+        return result;
     }
 
     /**
