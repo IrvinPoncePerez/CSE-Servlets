@@ -95,9 +95,6 @@ public class PostPictureServlet extends HttpServlet {
         
         StringBuilder builder = new StringBuilder();
         BufferedReader reader = request.getReader();
-        //BLOB blob;
-        //byte[] byteArray = null;
-        CLOB clob;
         String employeeNumber;
         
         try{
@@ -111,10 +108,8 @@ public class PostPictureServlet extends HttpServlet {
             jsonReader.close();
             
             employeeNumber = jsonObject.getString("employee_number");
-            //byteArray = decodeImageString(jsonObject.getString("picture"));
-            clob = createClob(jsonObject.getString("picture"));
             
-            if (setEmployeePicture(employeeNumber, clob)){            
+            if (setEmployeePicture(employeeNumber)){            
                 response.setStatus(HttpServletResponse.SC_OK);
             } else {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -128,95 +123,95 @@ public class PostPictureServlet extends HttpServlet {
         
     }
     
-    public BLOB decodeToImage(String stringImage){
-        BLOB blob = null;
-        String url = "jdbc:oracle:thin:@192.1.1.193:1601:DEV";
-        OracleConnection oracleConnection;
-        Connection connection;
-        
-        try {
-            Class.forName("oracle.jdbc.driver.OracleDriver");
-            connection = DriverManager.getConnection(url, "apps", "apps");            
-            
-            BASE64Decoder decoder = new BASE64Decoder();
-            byte[] decodeBytes = decoder.decodeBuffer(stringImage);
-            
-            oracleConnection = (OracleConnection) connection;
-            
-            
-            blob = BLOB.createTemporary(oracleConnection, 
-                                        true, 
-                                        oracle.sql.BLOB.DURATION_SESSION);
-            
-            OutputStream outputStream = blob.setBinaryStream(0);
-            outputStream.write(decodeBytes);
-            outputStream.flush();
-            outputStream.close();
-            
-        } catch (IOException ex) {
-            System.out.println(ex.getMessage());
-        } catch (SQLException ex) {
-            System.out.println(ex.getMessage());
-        } catch (ClassNotFoundException ex) {
-            System.out.println(ex.getMessage());
-        } 
-        
-        return blob;
-    }
+//    public BLOB decodeToImage(String stringImage){
+//        BLOB blob = null;
+//        String url = "jdbc:oracle:thin:@192.1.1.193:1601:DEV";
+//        OracleConnection oracleConnection;
+//        Connection connection;
+//        
+//        try {
+//            Class.forName("oracle.jdbc.driver.OracleDriver");
+//            connection = DriverManager.getConnection(url, "apps", "apps");            
+//            
+//            BASE64Decoder decoder = new BASE64Decoder();
+//            byte[] decodeBytes = decoder.decodeBuffer(stringImage);
+//            
+//            oracleConnection = (OracleConnection) connection;
+//            
+//            
+//            blob = BLOB.createTemporary(oracleConnection, 
+//                                        true, 
+//                                        oracle.sql.BLOB.DURATION_SESSION);
+//            
+//            OutputStream outputStream = blob.setBinaryStream(0);
+//            outputStream.write(decodeBytes);
+//            outputStream.flush();
+//            outputStream.close();
+//            
+//        } catch (IOException ex) {
+//            System.out.println(ex.getMessage());
+//        } catch (SQLException ex) {
+//            System.out.println(ex.getMessage());
+//        } catch (ClassNotFoundException ex) {
+//            System.out.println(ex.getMessage());
+//        } 
+//        
+//        return blob;
+//    }
+//    
+//    public byte[] decodeImageString(String stringImage){
+//        BASE64Decoder decoder = new BASE64Decoder();
+//        byte[] decodeBytes = null;
+//        try {
+//            decodeBytes = decoder.decodeBuffer(stringImage);
+//        } catch (IOException ex) {
+//            System.out.println(ex.getMessage());
+//        }
+//        
+//        return decodeBytes;
+//    }
+//    
+//    public CLOB createClob(String data){
+//        CLOB clob = null;
+//        BASE64Decoder decoder = new BASE64Decoder();
+//        String url = "jdbc:oracle:thin:@192.1.1.193:1601:DEV";
+//        OracleConnection oracleConnection;
+//        Connection connection;
+//        byte[] decodeBytes = null;
+//        
+//        try {
+//            Class.forName("oracle.jdbc.driver.OracleDriver");
+//            connection = DriverManager.getConnection(url, "apps", "apps");
+//            oracleConnection = (OracleConnection) connection;
+//            
+//            decodeBytes = decoder.decodeBuffer(data);
+//            clob = CLOB.createTemporary(oracleConnection, false, oracle.sql.CLOB.DURATION_SESSION);
+//            clob.open(CLOB.MODE_READWRITE);
+//            
+//            OutputStream stream = (OutputStream) clob.setAsciiStream(0L);
+//            stream.write(decodeBytes);
+//            stream.flush();
+//            stream.close();
+//            clob.close();
+//        } catch (IOException ex) {
+//            System.out.println(ex.getMessage());
+//        } catch (SQLException ex) {
+//            System.out.println(ex.getMessage());
+//        } catch (ClassNotFoundException ex) {
+//            System.out.println(ex.getMessage());
+//        }       
+//        
+//        return clob;
+//    }
     
-    public byte[] decodeImageString(String stringImage){
-        BASE64Decoder decoder = new BASE64Decoder();
-        byte[] decodeBytes = null;
-        try {
-            decodeBytes = decoder.decodeBuffer(stringImage);
-        } catch (IOException ex) {
-            System.out.println(ex.getMessage());
-        }
-        
-        return decodeBytes;
-    }
-    
-    public CLOB createClob(String data){
-        CLOB clob = null;
-        BASE64Decoder decoder = new BASE64Decoder();
-        String url = "jdbc:oracle:thin:@192.1.1.193:1601:DEV";
-        OracleConnection oracleConnection;
-        Connection connection;
-        byte[] decodeBytes = null;
-        
-        try {
-            Class.forName("oracle.jdbc.driver.OracleDriver");
-            connection = DriverManager.getConnection(url, "apps", "apps");
-            oracleConnection = (OracleConnection) connection;
-            
-            decodeBytes = decoder.decodeBuffer(data);
-            clob = CLOB.createTemporary(oracleConnection, false, oracle.sql.CLOB.DURATION_SESSION);
-            clob.open(CLOB.MODE_READWRITE);
-            
-            OutputStream stream = (OutputStream) clob.setAsciiStream(0L);
-            stream.write(decodeBytes);
-            stream.flush();
-            stream.close();
-            clob.close();
-        } catch (IOException ex) {
-            System.out.println(ex.getMessage());
-        } catch (SQLException ex) {
-            System.out.println(ex.getMessage());
-        } catch (ClassNotFoundException ex) {
-            System.out.println(ex.getMessage());
-        }       
-        
-        return clob;
-    }
-    
-    private Boolean setEmployeePicture(String employeeNumber, CLOB picture){
+    private Boolean setEmployeePicture(String employeeNumber){
     
         Connection connection = null;
         CallableStatement statement = null;
         Boolean result = false;
         String stringResult = "";
         
-        String sql = "{ ? = call PAC_HR_APPLICATION_ANDROID_PKG.SET_PICTURE(?, ?) }";
+        String sql = "{ ? = call PAC_HR_APPLICATION_ANDROID_PKG.SET_PICTURE(?) }";
         String url = "jdbc:oracle:thin:@192.1.1.193:1601:DEV";
         
         try{
@@ -225,7 +220,6 @@ public class PostPictureServlet extends HttpServlet {
             
             statement = connection.prepareCall(sql);
             statement.setString(2, employeeNumber);
-            statement.setClob(3, picture);
             
             statement.registerOutParameter(1, java.sql.Types.VARCHAR);
             statement.execute();
