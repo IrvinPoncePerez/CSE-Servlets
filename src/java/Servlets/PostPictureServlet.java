@@ -5,19 +5,18 @@
  */
 package Servlets;
 
+import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringReader;
-import oracle.sql.BLOB;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import javax.imageio.ImageIO;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
@@ -26,12 +25,14 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.sql.rowset.serial.SerialBlob;
-import oracle.jdbc.OracleConnection;
-import oracle.sql.ARRAY;
-import oracle.sql.ArrayDescriptor;
-import oracle.sql.CLOB;
 import sun.misc.BASE64Decoder;
+import com.jcraft.jsch.Channel;
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
+import java.io.FileInputStream;
+import java.nio.file.FileSystems;
+import java.util.Properties;
 
 /**
  *
@@ -96,6 +97,7 @@ public class PostPictureServlet extends HttpServlet {
         StringBuilder builder = new StringBuilder();
         BufferedReader reader = request.getReader();
         String employeeNumber;
+        String employeePicture;
         
         try{
             String line;
@@ -108,12 +110,16 @@ public class PostPictureServlet extends HttpServlet {
             jsonReader.close();
             
             employeeNumber = jsonObject.getString("employee_number");
+            employeePicture = jsonObject.getString("picture");
             
-            if (setEmployeePicture(employeeNumber)){            
-                response.setStatus(HttpServletResponse.SC_OK);
+            if (createEmployeePicture(employeeNumber, employeePicture) &&
+                    transferEmployeePicture(employeeNumber) &&
+                        assignEmployeePicture(employeeNumber)){            
+                            response.setStatus(HttpServletResponse.SC_OK);
             } else {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             }
+            
         } catch (IOException ex){
             System.out.println(ex.getMessage());
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -204,7 +210,73 @@ public class PostPictureServlet extends HttpServlet {
 //        return clob;
 //    }
     
-    private Boolean setEmployeePicture(String employeeNumber){
+    private Boolean createEmployeePicture(String employeeNumber, String picture){
+        Boolean result = false;
+        BufferedImage image = null;
+        byte[] imageBytes;
+        
+        String path = System.getenv("IMAGES_PATH");
+        BASE64Decoder decoder = new BASE64Decoder();
+        
+        try {
+            imageBytes = decoder.decodeBuffer(picture);
+            ByteArrayInputStream inputStream = new ByteArrayInputStream(imageBytes);
+            image = ImageIO.read(inputStream);
+            inputStream.close();
+            
+            File file = new File(path, employeeNumber + ".jpg");
+            result = ImageIO.write(image, "jpg", file);
+        } catch (IOException ex) {
+            System.out.println(ex.getMessage());
+        }
+        
+        return result;
+    }
+    
+    private Boolean transferEmployeePicture(String employeeNumber){
+        Boolean result = false;
+        String SFTPHOST = "192.1.1.193";
+        int SFTPPORT = 22;
+        String SFTPUSER = "developer";
+        String SFTPPASS = "oracle";
+        String SFTPWORKDIR = "/var/tmp/CARGAS/IMAGES";
+        String LOCALDIR = System.getenv("IMAGES_PATH");
+        
+        Session session = null;
+        Channel channel = null;
+        ChannelSftp channelSftp = null;
+        
+        try{
+            JSch jSch = new JSch();
+            Properties config = new Properties();
+            config.put("StrictHostKeyChecking", "no");
+            
+            session = jSch.getSession(SFTPUSER, SFTPHOST, SFTPPORT);
+            session.setPassword(SFTPPASS);           
+            session.setConfig(config);
+            session.connect();
+            
+            channel = session.openChannel("sftp");
+            channel.connect();
+            
+            channelSftp = (ChannelSftp)channel;
+            channelSftp.cd(SFTPWORKDIR);
+            
+            File file = new File(LOCALDIR, employeeNumber + ".jpg");
+            FileInputStream stream = new FileInputStream(file);
+            channelSftp.put(stream, file.getName());
+            result = true;
+            stream.close();
+            file.delete();
+        } catch (Exception ex){
+            System.out.println(ex.getMessage());
+            result = false;
+        }
+        
+        return result;
+    }
+    
+    private Boolean assignEmployeePicture(String employeeNumber){
     
         Connection connection = null;
         CallableStatement statement = null;
